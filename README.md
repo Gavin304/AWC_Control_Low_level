@@ -1,6 +1,6 @@
 # AWC Low Level Motor Controller
 
-This project provides low-level motor control and speed feedback for a differential drive robot using an Arduino-compatible microcontroller. It interfaces with two motors via DACs (Adafruit MCP4725), reads wheel speed via pulse inputs, and communicates with a host computer over serial.
+This project provides low-level motor control and speed feedback for a differential drive robot for Autonomous Wheel Chair robot using an Arduino-compatible microcontroller. It interfaces with two motors via DACs (Adafruit MCP4725), reads wheel speed via pulse inputs, and communicates with a host computer over serial.
 
 ## Features
 
