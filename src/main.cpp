@@ -10,8 +10,8 @@ Adafruit_MCP4725 dacLeft;
 #define DIR_LEFT 7
 #define DIR_RIGHT 6
 #define DAC_RESOLUTION 4096
-#define WHEEL_RADIUS 0.1651
-#define WHEEL_BASE   0.46
+#define WHEEL_RADIUS 0.08255
+#define WHEEL_BASE   0.47
 
 //================================================================
 // SPEED READER SETUP
@@ -26,12 +26,15 @@ float measuredRpmLeft = 0.0;
 float measuredRpmRight = 0.0;
 
 unsigned long previousRpmCalcTime = 0;
-const long rpmCalcInterval = 100;
+const long rpmCalcInterval = 300;
 
 // Filtering parameters
 float lastPublishedRpmLeft = 0.0;
 float lastPublishedRpmRight = 0.0;
-const float spikeThreshold = 120.0; // max allowed jump per 250ms sample
+const float spikeThreshold = 310.0; // max allowed jump per 250ms sample
+
+unsigned long previousPublishTime = 0;
+const long rpmPublishInterval = 100;  // Publish every 100 ms
 
 //================================================================
 // ISR
@@ -116,7 +119,11 @@ void loop() {
   }
 
   unsigned long currentMillis = millis();
+
+  // Recalculate RPM every rpmCalcInterval (e.g. 300ms)
   if (currentMillis - previousRpmCalcTime >= rpmCalcInterval) {
+    float intervalSeconds = (currentMillis - previousRpmCalcTime) / 1000.0;
+
     noInterrupts();
     unsigned long capturedPulseLeft = pulseCountLeft;
     unsigned long capturedPulseRight = pulseCountRight;
@@ -124,7 +131,8 @@ void loop() {
     pulseCountRight = 0;
     interrupts();
 
-    float intervalSeconds = (currentMillis - previousRpmCalcTime) / 1000.0;
+    previousRpmCalcTime = currentMillis;
+
     float freqLeft = capturedPulseLeft / intervalSeconds;
     float freqRight = capturedPulseRight / intervalSeconds;
     float rawRpmLeft = (freqLeft / motorPolePairs) * 10.0;
@@ -132,15 +140,17 @@ void loop() {
 
     measuredRpmLeft = (digitalRead(DIR_LEFT) == HIGH) ? rawRpmLeft : -rawRpmLeft;
     measuredRpmRight = (digitalRead(DIR_RIGHT) == LOW) ? rawRpmRight : -rawRpmRight;
+  }
 
-    // === Spike filter ===
+  // Publish the last measured RPM more frequently
+  if (currentMillis - previousPublishTime >= rpmPublishInterval) {
     float publishRpmLeft = measuredRpmLeft;
     float publishRpmRight = measuredRpmRight;
 
-    if (fabs(measuredRpmLeft - lastPublishedRpmLeft) > spikeThreshold) {
+    if (fabs(publishRpmLeft - lastPublishedRpmLeft) > spikeThreshold) {
       publishRpmLeft = lastPublishedRpmLeft;
     }
-    if (fabs(measuredRpmRight - lastPublishedRpmRight) > spikeThreshold) {
+    if (fabs(publishRpmRight - lastPublishedRpmRight) > spikeThreshold) {
       publishRpmRight = lastPublishedRpmRight;
     }
 
@@ -149,6 +159,6 @@ void loop() {
 
     lastPublishedRpmLeft = publishRpmLeft;
     lastPublishedRpmRight = publishRpmRight;
-    previousRpmCalcTime = currentMillis;
+    previousPublishTime = currentMillis;
   }
 }
